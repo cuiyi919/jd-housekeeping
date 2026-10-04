@@ -47,7 +47,7 @@ if [[ ! -s "$app/main.jsbundle" ]]; then
   exit 1
 fi
 executable="$(/usr/libexec/PlistBuddy -c 'Print CFBundleExecutable' "$app/Info.plist")"
-lipo -verify_arch arm64 "$app/$executable"
+lipo "$app/$executable" -verify_arch arm64
 
 mkdir -p "$run_root/package/Payload"
 ditto "$app" "$run_root/package/Payload/$(basename "$app")"
