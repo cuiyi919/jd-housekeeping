@@ -23,6 +23,8 @@ Expo Go 和独立 App 的数据空间不同。首次迁移前，在 Expo Go 中�
 
 参考：[GitHub 标准构建机器](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)、[Sideloadly 自动续签和覆盖更新](https://sideloadly.io/faq)。
 
+2026-10-05：已通过[首次完整云端构建](https://github.com/cuiyi919/jd-housekeeping/actions/runs/37226913565)，产出 v1.0.0 / build 2 的未签名真机 IPA；已检查 arm64 程序、内置 JavaScript、ZIP 完整性和下载校验值。签名安装及 iPhone 真机冷启动仍需在设备上验证。
+
 ## 在 iPhone 预览
 
 1. iPhone 安装与 SDK 57 兼容的 Expo Go。
