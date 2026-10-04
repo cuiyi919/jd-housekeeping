@@ -1,0 +1,37 @@
+{
+  "name": "jd-housekeeping",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "dependencies": {
+    "@react-native-async-storage/async-storage": "2.2.0",
+    "expo": "~57.0.26",
+    "expo-document-picker": "~57.0.3",
+    "expo-file-system": "~57.0.7",
+    "expo-sharing": "~57.0.22",
+    "expo-status-bar": "~57.0.1",
+    "react": "19.2.3",
+    "react-native": "0.86.3",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-webview": "13.16.1"
+  },
+  "devDependencies": {
+    "@expo/ngrok": "^4.1.3",
+    "@types/react": "~19.2.2",
+    "eslint": "^9.0.0",
+    "eslint-config-expo": "~57.0.2",
+    "typescript": "~6.0.3"
+  },
+  "scripts": {
+    "build:page": "node scripts/build-web.cjs",
+    "prestart": "npm run build:page",
+    "start": "expo start --go --lan",
+    "start:tunnel": "npm run build:page && expo start --go --tunnel --no-dev --minify --port 18081",
+    "start:offline": "npm run build:page && expo start --go --lan --offline",
+    "android": "npm run build:page && expo start --go --android",
+    "typecheck": "tsc --noEmit",
+    "lint": "expo lint",
+    "test": "node tests/check.cjs && node tests/ledger.test.cjs && node --test tests/storage.test.cjs",
+    "export:ios": "npm run build:page && expo export --platform ios --output-dir dist-ios"
+  },
+  "private": true
+}

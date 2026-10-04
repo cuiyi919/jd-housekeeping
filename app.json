@@ -1,0 +1,28 @@
+{
+  "expo": {
+    "name": "京东家政",
+    "slug": "jd-housekeeping",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/housekeeping-icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.cuiyi919.housekeeping",
+      "buildNumber": "1"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/housekeeping-icon.png",
+        "backgroundColor": "#e8f5fa"
+      },
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/housekeeping-icon.png"
+    },
+    "plugins": [
+      "expo-sharing"
+    ]
+  }
+}

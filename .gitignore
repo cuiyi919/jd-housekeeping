@@ -1,0 +1,63 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# Generated validation outputs and development logs
+dist-ios/
+test-results/
+*.log
+
+# Local records, credentials and build products must not be published.
+.env
+.env.*
+!.env.example
+credentials.json
+backups/
+京东家政记录-*.json
+京东家政-*.json
+build/
+*.ipa
+*.xcarchive/
+src/page.generated.json
+
+# One-time migration and machine-specific preview helpers.
+scripts/configure.cjs
+scripts/preview-qr.cjs

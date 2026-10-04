@@ -1,0 +1,77 @@
+name: Build iPhone IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+      - LICENSE
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ios-ipa-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Unsigned iPhone release
+    runs-on: macos-26
+    timeout-minutes: 90
+    env:
+      CI: '1'
+      EXPO_NO_TELEMETRY: '1'
+      DEVELOPER_DIR: /Applications/Xcode_26.4.app/Contents/Developer
+      IOS_BUILD_NUMBER: ${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '22'
+          cache: npm
+      - name: Install JavaScript dependencies
+        run: npm ci
+      - name: Build local page and validate
+        run: |
+          npm run build:page
+          npm run lint
+          npm run typecheck
+          npm test
+      - name: Set build number
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const app = JSON.parse(fs.readFileSync('app.json', 'utf8'));
+          app.expo.ios.buildNumber = process.env.IOS_BUILD_NUMBER;
+          fs.writeFileSync('app.json', JSON.stringify(app, null, 2) + '\n');
+          NODE
+      - name: Generate iOS project
+        run: npx expo prebuild --platform ios --no-install
+      - name: Install native dependencies
+        working-directory: ios
+        run: pod install
+      - name: Compile and package IPA
+        run: bash scripts/build-unsigned-ios.sh
+      - name: Upload IPA
+        uses: actions/upload-artifact@v4
+        with:
+          name: housekeeping-iphone-${{ github.run_number }}
+          path: |
+            build/ipa/*.ipa
+            build/ipa/*.sha256
+            build/ipa/build-info.json
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+      - name: Upload build log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-log-${{ github.run_number }}
+          path: build/xcodebuild.log
+          if-no-files-found: ignore
+          retention-days: 3
