@@ -8,10 +8,11 @@
 
 PWA 与原 iPhone App 共用 `web/` 中的预约计算、双账号账本和界面。PWA 不需要 Apple 开发者账号或续签；首次联网完成缓存后，可离线打开、录入和导出记录。
 
-部署地址：<https://cuiyi919.github.io/jd-housekeeping/>。在 iPhone Safari 中打开 → 分享 → 添加到主屏幕 → 保持“作为网页 App 打开”开启。**先从桌面图标打开，看到“离线可用”，再导入记录或断网测试。** Safari 标签页、主屏幕 Web App 和原生 App 的存储可能互相独立。
+部署地址：<https://xxldinosaur.github.io/jd-housekeeping/>。在 iPhone Safari 中打开 → 分享 → 添加到主屏幕 → 保持“作为网页 App 打开”开启。**先从桌面图标打开，看到“离线可用”，再导入记录或断网测试。** Safari 标签页、主屏幕 Web App 和原生 App 的存储可能互相独立。
 
 - 迁移：原 App 导出 JSON → 主屏幕 PWA 点“导入”。两种版本使用兼容的双账号备份格式。导入会替换全部记录，PWA 会先在本机保留上一次导入前的恢复副本。
 - 数据：仅保存在当前设备的浏览器存储，不上传服务器，不自动跨手机同步。请定期导出备份；持久存储申请由浏览器决定，无法抵御用户主动清除网站数据。
+- 同日起始的计划：同一账号只保留一个轮次。重新生成已填写记录的日期会返回原轮次，不重新计算或覆盖记录。已有重复轮次自动合并到最早轮次；两边不同的已填写记录分别保留，空白重复项不再展示。首次合并前保存原始副本，可在“备份与版本”导出。账号一、账号二不会互相合并。
 - 更新：联网打开时检查新版本。新版本完整缓存后显示“更新版本”；提交表单后点击确认更新。关闭所有旧页面后，新版本也可自然生效。更新只替换程序缓存，不删除账本。
 - 离线：缓存失败时不会显示“离线可用”，更新下载失败会保留旧版缓存。首次访问仍必须联网，缓存被系统或用户清理后也需要再次联网。
 - 不包含后台定时预约提醒或云同步，网页不会向京东提交订单。
@@ -51,7 +52,7 @@ Expo Go 和独立 App 的数据空间不同。首次迁移前，在 Expo Go 中�
 
 参考：[GitHub 标准构建机器](https://docs.github.com/en/actions/reference/runners/github-hosted-runners)、[Sideloadly 自动续签和覆盖更新](https://sideloadly.io/faq)。
 
-2026-10-05：已通过[首次完整云端构建](https://github.com/cuiyi919/jd-housekeeping/actions/runs/37226913565)，产出 v1.0.0 / build 2 的未签名真机 IPA；已检查 arm64 程序、内置 JavaScript、ZIP 完整性和下载校验值。签名安装及 iPhone 真机冷启动仍需在设备上验证。
+2026-10-05：已通过[首次完整云端构建](https://github.com/XXLDinosaur/jd-housekeeping/actions/runs/37226913565)，产出 v1.0.0 / build 2 的未签名真机 IPA；已检查 arm64 程序、内置 JavaScript、ZIP 完整性和下载校验值。签名安装及 iPhone 真机冷启动仍需在设备上验证。
 
 ## 在 iPhone 预览
 

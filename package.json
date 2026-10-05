@@ -31,7 +31,7 @@
     "android": "npm run build:page && expo start --go --android",
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
-    "test": "node tests/check.cjs && node tests/ledger.test.cjs && node --test tests/storage.test.cjs",
+    "test": "node tests/check.cjs && node tests/ledger.test.cjs && node --test tests/storage.test.cjs tests/plan-merge.test.cjs",
     "export:ios": "npm run build:page && expo export --platform ios --output-dir dist-ios",
     "build:pwa": "node scripts/build-pwa.cjs",
     "test:pwa": "node tests/pwa.cjs"

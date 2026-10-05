@@ -131,8 +131,57 @@ const mime = { '.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.
       fs.mkdirSync(path.join(root, 'test-results'), { recursive: true });
       await exportPage.screenshot({ path: path.join(root, `test-results/pwa-${width}.png`) });
     }
+    // Reported regression: generate A, then B, then A while B is selected.
+    const originalPlan = structuredClone(imported.plans[0]);
+    await exportPage.locator('#settingsDetails>summary').click();
+    await exportPage.locator('#start').fill('2026-11-27');
+    await exportPage.locator('#form button[type=submit]').click();
+    assert.equal(await exportPage.locator('#planSelect option').count(), 2);
+    await exportPage.locator('#start').fill(originalPlan.start);
+    await exportPage.locator('#count').fill('1');
+    await exportPage.locator('#form button[type=submit]').click();
+    assert.equal(await exportPage.locator('#planSelect option').count(), 2, 'no third round for the original date');
+    assert.equal(await exportPage.locator('#planSelect').inputValue(), originalPlan.id);
+    const generated = await exportPage.evaluate(key => JSON.parse(localStorage.getItem(key)), KEY);
+    assert.deepEqual(generated.plans[0], originalPlan, 'generation preserves every original record and setting');
+    assert.deepEqual(generated.plans.find(p => p.accountId === '2'), imported.plans.find(p => p.accountId === '2'));
+
+    // Existing installations may already contain an empty third round.
+    const duplicate = structuredClone(originalPlan);
+    duplicate.id = 'old-duplicate';
+    duplicate.rows = duplicate.rows.map((r, i) => ({ ...r, id: 'duplicate-' + i, amount: null, purchaseDate: '', actualService: '', bookingDate: '', items: [{ name: '', category: '其他', quantity: 1, unit: '件' }] }));
+    generated.plans.push(duplicate); generated.accounts['1'].activeId = duplicate.id;
+    const preMerge = JSON.stringify(generated);
+    await exportPage.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: KEY, raw: preMerge });
+    await exportPage.reload();
+    assert.equal(await exportPage.locator('#planSelect option').count(), 2);
+    assert.equal(await exportPage.locator('#planSelect').inputValue(), originalPlan.id);
+    assert.deepEqual((await exportPage.evaluate(key => JSON.parse(localStorage.getItem(key)), KEY)).plans[0], originalPlan);
+    assert.equal(await exportPage.evaluate(key => localStorage.getItem(key + '-before-plan-merge'), KEY), preMerge);
+    await exportPage.reload();
+    assert.equal(await exportPage.locator('#planSelect option').count(), 2, 'migration survives offline reopening');
+    const backupSection = exportPage.locator('details').filter({ has: exportPage.locator('#recoverPlanMerge') });
+    await backupSection.locator(':scope > summary').click();
+    const mergeDownload = exportPage.waitForEvent('download');
+    await exportPage.locator('#recoverPlanMerge').click();
+    assert.equal(fs.readFileSync(await (await mergeDownload).path(), 'utf8'), preMerge);
+    // An import of an old backup must consolidate again without modifying its records.
+    await chooseBackup(generated); await exportPage.locator('#confirmImport').click();
+    assert.equal(await exportPage.locator('#planSelect option').count(), 2);
+    assert.deepEqual((await exportPage.evaluate(key => JSON.parse(localStorage.getItem(key)), KEY)).plans[0], originalPlan);
+    await exportPage.evaluate(({ key, raw }) => localStorage.setItem(key, raw), { key: KEY, raw: preMerge });
+    await exportPage.addInitScript(() => {
+      const setItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function(key, value) {
+        if (key.endsWith('-before-plan-merge')) throw new DOMException('full', 'QuotaExceededError');
+        return setItem.call(this, key, value);
+      };
+    });
+    await exportPage.reload();
+    assert.equal(await exportPage.evaluate(key => localStorage.getItem(key), KEY), preMerge, 'backup failure never overwrites original duplicate ledger');
+    assert.equal(await exportPage.locator('#saveState').innerText(), '未能保存');
     assert.deepEqual(errors, []);
-    console.log('PWA browser checks passed: subpath install, offline reopen/edit, two accounts, backup round trip, quota failure, failed upgrade, successful upgrade, mobile layout.');
+    console.log('PWA browser checks passed: offline, accounts, backup, updates, mobile layout, duplicate generation/migration, preserved records and failed migration backup.');
   } finally {
     await browser.close();
     await new Promise(resolve => server.close(resolve));

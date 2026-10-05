@@ -17,25 +17,26 @@ const accountPlans=()=>state.plans.filter(p=>p.accountId===state.activeAccount);
 const accountRows=()=>accountPlans().flatMap(p=>p.rows);
 const active=()=>accountPlans().find(p=>p.id===account().activeId);
 function prepareState(raw,checkPlans=false){
-  const next=L.upgradeState(raw);
+  const next=L.mergeDuplicatePlans(L.upgradeState(raw));
   for(const a of Object.values(next.accounts))a.config={...defaults,...a.config};
   for(const p of next.plans){p.config={...defaults,...p.config,start:p.start};if(checkPlans)P.plan({...p.config,history:''})}
   return next;
 }
 function toast(s){$('toast').textContent=s;clearTimeout(timer);timer=setTimeout(()=>$('toast').textContent='',5500)}
 function storageWarning(s){$('storageWarning').hidden=false;$('storageWarning').textContent=s}
-function save(){if(storageBlocked)return;try{L.validateState(state);localStorage.setItem(KEY,JSON.stringify(state));$('saveState').textContent='已保存到此浏览器'}catch(e){storageWarning('暂时无法保存到浏览器，请导出备份，以免关闭后丢失记录。');$('saveState').textContent='未能保存'}}
+function save(){if(storageBlocked)return;try{L.validateState(state);if(!window.ReactNativeWebView){const previous=localStorage.getItem(KEY);if(previous&&L.hasDuplicatePlans(JSON.parse(previous)))localStorage.setItem(KEY+'-before-plan-merge',previous)}localStorage.setItem(KEY,JSON.stringify(state));$('saveState').textContent='已保存到此浏览器'}catch(e){storageWarning('暂时无法保存到浏览器，请导出备份，以免关闭后丢失记录。');$('saveState').textContent='未能保存'}}
 function setForm(c){c={...defaults,...c};$('start').value=c.start;nums.forEach(k=>$(k).value=c[k]);bools.forEach(k=>$(k).checked=!!c[k]);$('history').value=c.history||'';$('excluded').value=c.excluded||''}
 function readForm(){const c={start:$('start').value,history:$('history').value,excluded:$('excluded').value};nums.forEach(k=>c[k]=Number($(k).value));bools.forEach(k=>c[k]=$(k).checked);c.buffer=+c.buffer;return c}
 function mergeHistory(a,b){const counts=new Map();a.forEach(d=>counts.set(d,(counts.get(d)||0)+1));const used=new Map();const out=a.slice();for(const d of b){used.set(d,(used.get(d)||0)+1);if(used.get(d)>(counts.get(d)||0))out.push(d)}return out}
 function generate(c,initial=false){
-const old=active(),same=old&&old.start===c.start,oldRows=same?old.rows:[];
+const old=accountPlans().find(p=>p.start===c.start),same=!!old,oldRows=old?.rows||[];
+if(old&&(old.id!==account().activeId||old.rows.some(L.hasRecord))){account().activeId=old.id;account().config={...old.config};setForm(old.config);save();renderAll();if(!initial)toast('同日期的计划已存在，已合并到原轮次，原记录未改动。');return}
 if(same&&oldRows.slice(c.count).some(r=>r.purchaseDate||r.actualService||r.items.some(i=>i.name)||r.amount!==null))throw Error('减少次数会移除已填写的记录。请保留次数，或更改首单日期建立下一轮。');
 const known=accountRows().filter(r=>r.bookingDate&&r.bookingDate<c.start).map(r=>r.bookingDate);
 const manual=P.dates(c.history).map(P.iso);const history=mergeHistory(known,manual).join(',');
 const result=P.plan({...c,history});
 const rows=result.rows.map((x,i)=>{const r={id:uid(),suggested:P.iso(x.date),order:x.order?.map(P.iso)||null,orderDate:x.order?P.iso(x.order[1]):'',items:[blankItem()],amount:null,purchaseDate:'',actualService:'',bookingDate:''};if(oldRows[i]){const old=oldRows[i];return {...r,...old,suggested:old.actualService?old.suggested:r.suggested,order:old.purchaseDate?old.order:r.order,orderDate:old.orderDate||r.orderDate}}return r});
-if(same){old.config={...c};old.rows=rows}else{const p={id:uid(),accountId:state.activeAccount,start:c.start,config:{...c},rows};state.plans.push(p);account().activeId=p.id}
+if(same){old.config={...c};old.rows=rows;account().activeId=old.id}else{const p={id:uid(),accountId:state.activeAccount,start:c.start,config:{...c},rows};state.plans.push(p);account().activeId=p.id}
 account().config={...c};save();renderAll();if(!initial)toast(same?'计划已更新，已填写的记录已保留。':'新计划已生成，旧计划仍可切换查看。')}
 function renderDashboard(){
   const s=L.summary(allRows());
@@ -53,6 +54,7 @@ function updateHints(){const plan=active();if(!plan)return;document.querySelecto
 function renderWarnings(){const p=active();if(!p)return;let notices=[];const end=P.day(p.start)+p.config.span-1;const years=new Set(Array.from({length:p.config.span},(_,i)=>P.iso(P.day(p.start)+i).slice(0,4)));if([...years].some(y=>y!=='2026'))notices.push('本计划包含尚未收录假期的年份，请在设置中补充放假日期。');if(p.rows.some(r=>!r.purchaseDate&&r.order&&r.order[1]<today()))notices.push('部分建议下单区间已过去，请根据实际券状态调整计划。');
 const records=accountRows().filter(r=>!p.rows.includes(r)&&r.bookingDate).concat(p.rows.map(r=>({...r,bookingDate:r.bookingDate||r.suggested})));
 const manual=P.dates(p.config.history||'').map(P.iso);const actualDates=records.map(r=>r.bookingDate);const merged=mergeHistory(actualDates,manual);merged.slice(actualDates.length).forEach((date,i)=>records.push({id:'manual'+i,bookingDate:date}));
+if(p.rows.some(r=>r.mergedFromPlanId))notices.push('同日期轮次已合并；重复轮次中填写过的记录也已保留，请核对，原轮次记录未覆盖。');
 if(L.bookingWarnings(records,p.config.buffer).length)notices.push('实际预约与建议计划合并后存在30/60天次数冲突，后续日期请调整后再预约。');
 for(const r of p.rows){if(r.bookingDate&&(r.bookingDate<planCoupon(r,p)[0]||r.bookingDate>planCoupon(r,p)[1]))notices.push(`${short(r.actualService||r.suggested)}的提交预约日期不在估算的共同有效期内，请核对实际券有效期。`);if(r.actualService&&(P.weekend(P.day(r.actualService))||holiday(r.actualService)))notices.push(`${short(r.actualService)}实际上门处于周末或已收录假期，可能加价。`)}
 $('planWarnings').innerHTML=[...new Set(notices)].map(s=>`<div class="alert">${esc(s)}</div>`).join('');$('planSubtitle').textContent=`${p.start} — ${P.iso(end)} · ${p.rows.length}次计划`}
@@ -89,6 +91,6 @@ function downloadBackup(){const blob=new Blob([JSON.stringify(state,null,2)],{ty
 $('export').onclick=downloadBackup;$('import').onclick=()=>$('importFile').click();
 $('importFile').addEventListener('change',async e=>{try{const f=e.target.files[0];if(!f)return;if(f.size>5000000)throw Error('备份文件过大，请选择本工具导出的JSON文件。');const next=prepareState(JSON.parse(await f.text()),true);pendingImport=next;$('importDescription').textContent=`备份包含${next.plans.length}轮计划、${next.plans.flatMap(p=>p.rows).length}条家政记录。`;$('importDialog').showModal()}catch(err){toast('无法导入：'+err.message)}finally{e.target.value=''}});
 $('cancelImport').onclick=()=>{pendingImport=null;$('importDialog').close()};$('confirmImport').onclick=()=>{if(!pendingImport)return;state=pendingImport;pendingImport=null;storageBlocked=false;$('storageWarning').hidden=true;$('importDialog').close();setForm(account().config);save();renderAll();$('settingsDetails').open=!active();toast('备份已导入。')};
-try{const raw=localStorage.getItem(KEY);if(raw){state=prepareState(JSON.parse(raw))}}catch{storageBlocked=true;storageWarning('浏览器中的旧记录无法读取，已暂停自动保存以保护原数据。可导入有效备份恢复；当前修改请先导出备份。')}
+try{const raw=localStorage.getItem(KEY);if(raw){const parsed=JSON.parse(raw);state=prepareState(parsed);if(L.hasDuplicatePlans(parsed))save()}}catch{storageBlocked=true;storageWarning('浏览器中的旧记录无法读取，已暂停自动保存以保护原数据。可导入有效备份恢复；当前修改请先导出备份。')}
 setForm(account().config);if(!state.plans.length&&state.activeAccount==='1')generate(account().config,true);else renderAll();if(matchMedia('(max-width:850px)').matches)$('settingsDetails').open=!active();
 if(document.modelContext?.registerTool){try{Promise.resolve(document.modelContext.registerTool({name:'read_housekeeping_summary',title:'查看家政支出汇总',description:'读取当前浏览器记录的家政费用、完成次数和商品名称，不修改数据。',inputSchema:{type:'object',properties:{},additionalProperties:false},annotations:{readOnlyHint:true,untrustedContentHint:true},execute(input){if(!input||Object.keys(input).length)throw Error('不接受参数');return L.summary(allRows())}})).catch(()=>{})}catch{}}

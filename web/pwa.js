@@ -4,7 +4,7 @@
   const recoveryKey = KEY + '-before-import';
   let registration, updateRequested = false, installPrompt;
   const status = $('offlineState');
-  try { if (!storageBlocked && localStorage.getItem(KEY)) $('saveState').textContent = '已保存到此浏览器'; } catch { /* Existing storage warning remains visible. */ }
+  try { if (!storageBlocked && $('saveState').textContent !== '未能保存' && localStorage.getItem(KEY)) $('saveState').textContent = '已保存到此浏览器'; } catch { /* Existing storage warning remains visible. */ }
   $('pwaVersion').textContent = '__PWA_VERSION__';
   $('closeInstall').onclick = () => $('installDialog').close();
   window.addEventListener('beforeinstallprompt', event => { event.preventDefault(); installPrompt = event; });
@@ -31,6 +31,13 @@
       if (raw === null) { toast('尚无导入前的恢复副本。'); return; }
       void exportRaw(raw, '京东家政-导入前记录');
     } catch { toast('无法读取恢复副本，请检查存储权限。'); }
+  };
+  try { $('recoverPlanMerge').hidden = localStorage.getItem(KEY + '-before-plan-merge') === null; } catch { /* Storage warning already shown. */ }
+  $('recoverPlanMerge').onclick = () => {
+    try {
+      const raw = localStorage.getItem(KEY + '-before-plan-merge');
+      if (raw !== null) void exportRaw(raw, '京东家政-合并前记录');
+    } catch { toast('无法读取合并前副本，请检查存储权限。'); }
   };
   // Validate and persist first: quota/permission failures cannot replace current state.
   $('confirmImport').onclick = () => {

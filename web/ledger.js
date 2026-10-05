@@ -56,6 +56,39 @@ function duplicates(row,rows,onDate){
   return [...found.values()];
 }
 function bookingWarnings(rows,buffer){let warnings=[];const sorted=rows.filter(x=>x.bookingDate).slice().sort((a,b)=>a.bookingDate.localeCompare(b.bookingDate));for(let i=0;i<sorted.length;i++){const d=P.day(sorted[i].bookingDate),past=sorted.slice(0,i).map(x=>P.day(x.bookingDate));if(!P.allowed(d,past,buffer))warnings.push({id:sorted[i].id,date:sorted[i].bookingDate})}return warnings}
+// Default suggested order dates are generated, not user records. Preserve drafts too.
+function hasRecord(row){return !!(row.purchaseDate||row.actualService||row.bookingDate||row.amount!==null||row.items.some(i=>i.name.trim()||i.category!=='其他'||i.quantity!==1||i.unit!=='件')||(row.orderDate&&row.orderDate!==row.order?.[1]))}
+function hasDuplicatePlans(s){const seen=new Set();return s.plans.some(p=>{const key=(p.accountId||'1')+'|'+p.start;if(seen.has(key))return true;seen.add(key);return false})}
+function mergeDuplicatePlans(s){
+  validateState(s);
+  if(s.version!==3)throw Error('请先升级账本格式。');
+  if(!hasDuplicatePlans(s))return s;
+  const next=JSON.parse(JSON.stringify(s)),byDate=new Map(),aliases=new Map(),plans=[];
+  for(const p of next.plans){
+    const key=p.accountId+'|'+p.start,prior=byDate.get(key);
+    if(!prior){byDate.set(key,p);plans.push(p);continue}
+    aliases.set(p.id,prior.id);
+    for(const row of p.rows){
+      if(!hasRecord(row))continue;
+      // Same identity and contents can be a copied row; different records stay separate.
+      const identical=prior.rows.find(r=>r.id===row.id&&JSON.stringify(r)===JSON.stringify(row));
+      if(identical)continue;
+      const empty=prior.rows.findIndex(r=>r.suggested===row.suggested&&!hasRecord(r));
+      const kept={...row,mergedFromPlanId:p.id};
+      let suffix=1;
+      while(prior.rows.some((r,i)=>i!==empty&&r.id===kept.id))kept.id='merged-row-'+suffix++;
+      if(empty>=0)prior.rows[empty]=kept;else prior.rows.push(kept);
+    }
+  }
+  next.plans=plans;
+  for(const a of Object.values(next.accounts)){
+    if(aliases.has(a.activeId)){
+      a.activeId=aliases.get(a.activeId);
+      a.config={...plans.find(p=>p.id===a.activeId).config};
+    }
+  }
+  return validateState(next);
+}
 function validateState(s){
 function fail(){throw Error('备份格式不正确，原有记录未改动。')}
 function text(x,max=200){if(typeof x!=='string'||x.length>max)fail()}
@@ -66,7 +99,7 @@ if(s.version===2){config(s.config);text(s.activeId)}else{
   if(!['1','2'].includes(s.activeAccount)||!s.accounts||typeof s.accounts!=='object'||Array.isArray(s.accounts)||Object.keys(s.accounts).sort().join(',')!=='1,2')fail();
   for(const id of ['1','2']){const a=s.accounts[id];if(!a||typeof a!=='object')fail();config(a.config);text(a.activeId)}
 }
-let ids=new Set();for(const p of s.plans){if(!p||!Array.isArray(p.rows)||p.rows.length>5)fail();config(p.config);if(s.version===3&&!['1','2'].includes(p.accountId))fail();text(p.id);if(ids.has(p.id))fail();ids.add(p.id);date(p.start);const rowIds=new Set();for(const r of p.rows){if(!r)fail();text(r.id);if(rowIds.has(r.id))fail();rowIds.add(r.id);date(r.suggested);for(const k of ['purchaseDate','actualService','bookingDate'])date(r[k],true);if(r.order!==null){if(!Array.isArray(r.order)||r.order.length!==2)fail();r.order.forEach(x=>date(x));if(r.order[0]>r.order[1])fail()}if(r.orderDate!==undefined)date(r.orderDate,true);if(r.amount!==null&&(typeof r.amount!=='number'||!Number.isFinite(r.amount)||r.amount<0||r.amount>1000000||Math.abs(r.amount*100-Math.round(r.amount*100))>0.000001))fail();if(!Array.isArray(r.items)||r.items.length>100)fail();for(const item of r.items){text(item.name);text(item.category);text(item.unit,20);if(!categories.includes(item.category)||typeof item.quantity!=='number'||!Number.isFinite(item.quantity)||item.quantity<=0||item.quantity>100000)fail()}}}
+let ids=new Set();for(const p of s.plans){if(!p||!Array.isArray(p.rows)||p.rows.length>1000)fail();config(p.config);if(s.version===3&&!['1','2'].includes(p.accountId))fail();text(p.id);if(ids.has(p.id))fail();ids.add(p.id);date(p.start);const rowIds=new Set();for(const r of p.rows){if(!r)fail();text(r.id);if(rowIds.has(r.id))fail();rowIds.add(r.id);date(r.suggested);for(const k of ['purchaseDate','actualService','bookingDate'])date(r[k],true);if(r.order!==null){if(!Array.isArray(r.order)||r.order.length!==2)fail();r.order.forEach(x=>date(x));if(r.order[0]>r.order[1])fail()}if(r.orderDate!==undefined)date(r.orderDate,true);if(r.amount!==null&&(typeof r.amount!=='number'||!Number.isFinite(r.amount)||r.amount<0||r.amount>1000000||Math.abs(r.amount*100-Math.round(r.amount*100))>0.000001))fail();if(!Array.isArray(r.items)||r.items.length>100)fail();for(const item of r.items){text(item.name);text(item.category);text(item.unit,20);if(!categories.includes(item.category)||typeof item.quantity!=='number'||!Number.isFinite(item.quantity)||item.quantity<=0||item.quantity>100000)fail()}}}
 if(s.version===2){if(s.plans.length&&!ids.has(s.activeId))fail()}else{
   for(const id of ['1','2']){const plans=s.plans.filter(p=>p.accountId===id),selected=s.accounts[id].activeId;if(plans.length?!plans.some(p=>p.id===selected):selected!=='')fail()}
 }
@@ -77,5 +110,5 @@ function upgradeState(s){
   if(s.version===3)return s;
   return {version:3,activeAccount:'1',accounts:{'1':{config:{...s.config},activeId:s.plans.length?s.activeId:''},'2':{config:{},activeId:''}},plans:s.plans.map(p=>({...p,accountId:'1'}))};
 }
-const api={categories,summary,duplicates,bookingWarnings,validateState,upgradeState,purchase};if(typeof module!=='undefined')module.exports=api;root.Ledger=api;
+const api={categories,summary,duplicates,bookingWarnings,validateState,upgradeState,purchase,hasRecord,hasDuplicatePlans,mergeDuplicatePlans};if(typeof module!=='undefined')module.exports=api;root.Ledger=api;
 })(typeof globalThis!=='undefined'?globalThis:this);

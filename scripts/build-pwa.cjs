@@ -16,7 +16,7 @@ let html = read('index.html')
 <dialog id="installDialog"><h2>添加到主屏幕</h2><p>iPhone：用 Safari 打开此网址，点分享按钮，再点“添加到主屏幕”，保持“作为网页 App 打开”开启。</p><p>添加后，请从桌面图标打开，等显示“离线可用”再断网使用。</p><p>原 App 或浏览器里的记录不会自动转移。请先导出备份，再从桌面图标打开本工具并导入。</p><p class="quiet">两台手机各自保存，不会自动同步。清除网站数据前请导出备份。</p><button id="closeInstall" class="primary">知道了</button></dialog>`)
   .replace('数据仅保存在当前浏览器；在线与离线版不自动同步。可导出备份，再在其他版本导入。', '记录仅保存在当前设备，不上传服务器，也不会在两台手机间自动同步。请定期导出备份；卸载、清除网站数据或系统回收存储可能导致记录丢失。原 App 的 JSON 备份可直接导入。')
   .replace('建议先导出当前备份。', '导入前会保存当前记录的恢复副本，仍建议先导出备份。')
-  .replace('</aside>', '<details class="help rules"><summary>备份与版本</summary><p id="pwaStorage">正在检查本地存储…</p><button id="persistPwa" class="subtle">保护本地存储</button> <button id="recoverPwa" class="subtle">导出导入前记录</button><p class="quiet">版本 <span id="pwaVersion"></span> · 非京东官方应用</p></details></aside>');
+  .replace('</aside>', '<details class="help rules"><summary>备份与版本</summary><p id="pwaStorage">正在检查本地存储…</p><button id="persistPwa" class="subtle">保护本地存储</button> <button id="recoverPwa" class="subtle">导出导入前记录</button> <button id="recoverPlanMerge" class="subtle" hidden>导出合并前记录</button><p class="quiet">版本 <span id="pwaVersion"></span> · 非京东官方应用</p></details></aside>');
 for (const name of ['planner', 'ledger', 'app']) {
   const code = read(name + '.js');
   new vm.Script(code);
