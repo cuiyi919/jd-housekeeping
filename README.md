@@ -4,6 +4,34 @@
 
 本项目不是京东官方应用。真实记录只存储在使用者手机上，不随源代码发布。
 
+## PWA：免签名的离线网页版
+
+PWA 与原 iPhone App 共用 `web/` 中的预约计算、双账号账本和界面。PWA 不需要 Apple 开发者账号或续签；首次联网完成缓存后，可离线打开、录入和导出记录。
+
+部署地址：<https://cuiyi919.github.io/jd-housekeeping/>。在 iPhone Safari 中打开 → 分享 → 添加到主屏幕 → 保持“作为网页 App 打开”开启。**先从桌面图标打开，看到“离线可用”，再导入记录或断网测试。** Safari 标签页、主屏幕 Web App 和原生 App 的存储可能互相独立。
+
+- 迁移：原 App 导出 JSON → 主屏幕 PWA 点“导入”。两种版本使用兼容的双账号备份格式。导入会替换全部记录，PWA 会先在本机保留上一次导入前的恢复副本。
+- 数据：仅保存在当前设备的浏览器存储，不上传服务器，不自动跨手机同步。请定期导出备份；持久存储申请由浏览器决定，无法抵御用户主动清除网站数据。
+- 更新：联网打开时检查新版本。新版本完整缓存后显示“更新版本”；提交表单后点击确认更新。关闭所有旧页面后，新版本也可自然生效。更新只替换程序缓存，不删除账本。
+- 离线：缓存失败时不会显示“离线可用”，更新下载失败会保留旧版缓存。首次访问仍必须联网，缓存被系统或用户清理后也需要再次联网。
+- 不包含后台定时预约提醒或云同步，网页不会向京东提交订单。
+
+开发与验证：
+
+```powershell
+npm ci
+npm run build:page
+npm run build:pwa
+npm run lint
+npm run typecheck
+npm test
+npm run test:pwa
+```
+
+`dist/pwa/` 是可部署的纯静态目录，只包含程序、图标和离线缓存脚本。使用 localhost 静态服务器可以在电脑测试；手机安装离线版必须使用 HTTPS，局域网 HTTP 地址不支持 Service Worker。浏览器测试在 Windows 使用已安装的 Edge；Linux CI 使用 `npm exec playwright install --with-deps chromium` 安装 Chromium。
+
+GitHub 仓库 Settings → Pages 的 Source 设为 **GitHub Actions**。工作流 `.github/workflows/pwa.yml` 会验证后发布该目录，后续推送网页修改即可更新。PWA 测试覆盖子目录部署、断网重新打开与录入、双账号合计、备份导入导出、存储写入失败、更新失败回退及更新后数据保留。iPhone Safari 的添加到桌面、原生分享面板和真实离线使用仍需真机确认。
+
 ## 免费构建 iPhone 安装包
 
 仓库的 **Actions → Build iPhone IPA** 会在 `main` 分支代码更新后自动运行，也可点 **Run workflow** 手动运行。工作流使用 GitHub 标准 `macos-26` 机器、Xcode 26.4 和 Node 22，生成内置页面及 JavaScript 的 Release 版，无需提供 Apple ID、苹果签名证书或 Expo token。

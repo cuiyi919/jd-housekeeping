@@ -1,0 +1,12 @@
+html { background:#e8f5fa; }
+body { padding-top:env(safe-area-inset-top); padding-bottom:env(safe-area-inset-bottom); }
+.pwa-tools { display:flex; align-items:center; flex-wrap:wrap; gap:4px 10px; margin:0 0 8px; color:var(--muted); font-size:12px; }
+.pwa-tools button { padding:4px 9px; min-height:36px; font-size:12px; border-radius:9px; }
+#offlineState { margin-right:auto; }
+#offlineState[data-ready=true] { color:#18724c; }
+[hidden] { display:none!important; }
+#installDialog p { line-height:1.7; }
+#installDialog h2 { margin-top:0; }
+#installDialog .primary { width:100%; }
+#pwaStorage { font-size:12px; }
+@media(display-mode:standalone) { #installHelp { display:none; } }

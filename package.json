@@ -19,6 +19,7 @@
     "@types/react": "~19.2.2",
     "eslint": "^9.0.0",
     "eslint-config-expo": "~57.0.2",
+    "playwright": "^1.63.0",
     "typescript": "~6.0.3"
   },
   "scripts": {
@@ -31,7 +32,9 @@
     "typecheck": "tsc --noEmit",
     "lint": "expo lint",
     "test": "node tests/check.cjs && node tests/ledger.test.cjs && node --test tests/storage.test.cjs",
-    "export:ios": "npm run build:page && expo export --platform ios --output-dir dist-ios"
+    "export:ios": "npm run build:page && expo export --platform ios --output-dir dist-ios",
+    "build:pwa": "node scripts/build-pwa.cjs",
+    "test:pwa": "node tests/pwa.cjs"
   },
   "private": true
 }
